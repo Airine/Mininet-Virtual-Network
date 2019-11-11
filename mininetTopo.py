@@ -20,7 +20,23 @@ class TreeTopo(Topo):
 	def __init__(self):
 		# Initialize topology
 		Topo.__init__(self)        
-	
+        
+        f = open('topology.in')
+        config = f.readline().strip().split(' ')
+        lines = f.readlines()
+        f.close()
+        N, M, L = [int(i) for i in config]
+        for n in range(N):
+            self.addHost('h%d' % (n+1))
+        for m in range(M):
+            sconfig = {'dpid': "%16x" % (m+1)}
+            self.addSwitch('s%d' % (m+1), **sconfig)
+        print(self.hosts)
+        print(type(self.hosts))
+        # for l in lines:
+        #     d1, d2, bw = line.strip().split(',')
+        #     self.addLink(d1, d2, bw=bw)
+
 	# You can write other functions as you need.
 
 	# Add hosts
