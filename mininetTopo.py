@@ -16,10 +16,10 @@ from mininet.node import RemoteController
 net = None
 
 class TreeTopo(Topo):
-			
-	def __init__(self):
-		# Initialize topology
-		Topo.__init__(self)        
+            
+    def __init__(self):
+        # Initialize topology
+        Topo.__init__(self)        
         
         f = open('topology.in')
         config = f.readline().strip().split(' ')
@@ -37,17 +37,17 @@ class TreeTopo(Topo):
         #     d1, d2, bw = line.strip().split(',')
         #     self.addLink(d1, d2, bw=bw)
 
-	# You can write other functions as you need.
+    # You can write other functions as you need.
 
-	# Add hosts
+    # Add hosts
     # > self.addHost('h%d' % [HOST NUMBER])
 
-	# Add switches
+    # Add switches
     # > sconfig = {'dpid': "%016x" % [SWITCH NUMBER]}
     # > self.addSwitch('s%d' % [SWITCH NUMBER], **sconfig)
 
-	# Add links
-	# > self.addLink([HOST1], [HOST2])
+    # Add links
+    # > self.addLink([HOST1], [HOST2])
 
 def startNetwork():
     info('** Creating the tree network\n')

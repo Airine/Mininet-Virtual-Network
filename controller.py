@@ -27,11 +27,11 @@ class Controller(EventMixin):
     # You can write other functions as you need.
         
     def _handle_PacketIn (self, event):    
-    	# install entries to the route table
+        # install entries to the route table
         def install_enqueue(event, packet, outport, q_id):
           
 
-    	# Check the packet and decide how to route the packet
+        # Check the packet and decide how to route the packet
         def forward(message = None):
 
 
