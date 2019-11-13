@@ -11,7 +11,7 @@ from mininet.log import setLogLevel, info
 from mininet.cli import CLI
 from mininet.topo import Topo
 from mininet.topolib import TreeTopo
-from mininet.link import Link
+from mininet.link import Link, TCLink
 from mininet.node import RemoteController
 
 net = None
@@ -33,11 +33,11 @@ class MyTopo(Topo):
             self.addHost('h%d' % (n+1))
         for m in range(M):
             sconfig = {'dpid': "%016x" % (m+1)}
-            # devices['s%d' % (m+1)] = 
             self.addSwitch('s%d' % (m+1), **sconfig)
 
         for l in lines:
             d1, d2, bandwidth = l.strip().split(',')
+            # lconfig = dict(bw=bandwidth, max_queue_size=1000)
             # self.addLink(devices[d1], devices[d2])
             self.addLink(d1, d2)
 
