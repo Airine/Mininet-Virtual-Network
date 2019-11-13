@@ -31,11 +31,11 @@ class TreeTopo(Topo):
         for m in range(M):
             sconfig = {'dpid': "%16x" % (m+1)}
             self.addSwitch('s%d' % (m+1), **sconfig)
-        print(self.hosts)
-        print(type(self.hosts))
-        # for l in lines:
-        #     d1, d2, bw = line.strip().split(',')
-        #     self.addLink(d1, d2, bw=bw)
+        # print(self.hosts)
+        # print(type(self.hosts))
+        for l in lines:
+            d1, d2, bw = l.strip().split(',')
+            self.addLink(d1, d2, bw=bw)
 
     # You can write other functions as you need.
 
