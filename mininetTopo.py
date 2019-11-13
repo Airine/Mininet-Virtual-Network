@@ -41,7 +41,6 @@ class MyTopo(Topo):
             # self.addLink(devices[d1], devices[d2])
             self.addLink(d1, d2)
 
-
     # You can write other functions as you need.
 
     # Add hosts

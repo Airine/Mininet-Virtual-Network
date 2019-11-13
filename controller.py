@@ -29,15 +29,15 @@ class Controller(EventMixin):
     def _handle_PacketIn (self, event):    
         # install entries to the route table
         def install_enqueue(event, packet, outport, q_id):
-          
+            pass
 
         # Check the packet and decide how to route the packet
         def forward(message = None):
-
+            pass
 
         # When it knows nothing about the destination, flood but don't install the rule
         def flood (message = None):
-        
+            pass
         
         forward()
 
@@ -48,10 +48,10 @@ class Controller(EventMixin):
         
         # Send the firewall policies to the switch
         def sendFirewallPolicy(connection, policy):
-            
+            pass
 
-        for i in [FIREWALL POLICIES]:
-            sendFirewallPolicy(event.connection, i)
+        # for i in [FIREWALL POLICIES]:
+        #     sendFirewallPolicy(event.connection, i)
             
 
 def launch():
