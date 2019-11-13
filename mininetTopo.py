@@ -10,32 +10,37 @@ from mininet.net import Mininet
 from mininet.log import setLogLevel, info
 from mininet.cli import CLI
 from mininet.topo import Topo
+from mininet.topolib import TreeTopo
 from mininet.link import Link
 from mininet.node import RemoteController
 
 net = None
 
-class TreeTopo(Topo):
+class MyTopo(Topo):
             
-    def __init__(self):
-        # Initialize topology
-        Topo.__init__(self)        
-        
-        f = open('topology.in')
+    def build(self, input_file='topology.in'):
+
+        f = open(input_file)
         config = f.readline().strip().split(' ')
         lines = f.readlines()
         f.close()
+
         N, M, L = [int(i) for i in config]
+        # devices = dict()
+
         for n in range(N):
+            # devices['h%d' % (n+1)]=
             self.addHost('h%d' % (n+1))
         for m in range(M):
-            sconfig = {'dpid': "%16x" % (m+1)}
+            sconfig = {'dpid': "%016x" % (m+1)}
+            # devices['s%d' % (m+1)] = 
             self.addSwitch('s%d' % (m+1), **sconfig)
-        print(self.hosts)
-        print(type(self.hosts))
-        # for l in lines:
-        #     d1, d2, bw = line.strip().split(',')
-        #     self.addLink(d1, d2, bw=bw)
+
+        for l in lines:
+            d1, d2, bandwidth = l.strip().split(',')
+            # self.addLink(devices[d1], devices[d2])
+            self.addLink(d1, d2)
+
 
     # You can write other functions as you need.
 
@@ -51,18 +56,19 @@ class TreeTopo(Topo):
 
 def startNetwork():
     info('** Creating the tree network\n')
-    topo = TreeTopo()
+    # topo = TreeTopo(depth=2, fanout=2)
 
+    topo = MyTopo()
     global net
     net = Mininet(topo=topo, link = Link,
-                  controller=lambda name: RemoteController(name, ip='SERVER IP'),
+                  controller=lambda name: RemoteController(name, ip='172.27.226.243'),
                   listenPort=6633, autoSetMacs=True)
 
     info('** Starting the network\n')
     net.start()
 
     # Create QoS Queues
-    # > os.system('sudo ovs-vsctl -- set Port [INTERFACE] qos=@newqos \
+    # os.system('sudo ovs-vsctl -- set Port [INTERFACE] qos=@newqos \
     #            -- --id=@newqos create QoS type=linux-htb other-config:max-rate=[LINK SPEED] queues=0=@q0,1=@q1,2=@q2 \
     #            -- --id=@q0 create queue other-config:max-rate=[LINK SPEED] other-config:min-rate=[LINK SPEED] \
     #            -- --id=@q1 create queue other-config:min-rate=[X] \
@@ -75,7 +81,7 @@ def stopNetwork():
     if net is not None:
         net.stop()
         # Remove QoS and Queues
-        os.system('sudo ovs-vsctl --all destroy Qos')
+        os.system('sudo ovs-vsctl --all dcestroy Qos')
         os.system('sudo ovs-vsctl --all destroy Queue')
 
 
