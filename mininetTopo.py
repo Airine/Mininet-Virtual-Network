@@ -37,18 +37,6 @@ class MyTopo(Topo):
             d1, d2, bandwidth = l.strip().split(',')
             self.addLink(d1, d2)
 
-    # You can write other functions as you need.
-
-    # Add hosts
-    # > self.addHost('h%d' % [HOST NUMBER])
-
-    # Add switches
-    # > sconfig = {'dpid': "%016x" % [SWITCH NUMBER]}
-    # > self.addSwitch('s%d' % [SWITCH NUMBER], **sconfig)
-
-    # Add links
-    # > self.addLink([HOST1], [HOST2])
-
 def startNetwork():
     info('** Creating the tree network\n')
     # topo = TreeTopo(depth=2, fanout=2)
@@ -56,7 +44,7 @@ def startNetwork():
     topo = MyTopo()
     global net
     net = Mininet(topo=topo, link = Link,
-                  controller=lambda name: RemoteController(name, ip='172.27.226.243'),
+                  controller=lambda name: RemoteController(name, ip='172.27.226.243'), #192.168.56.1
                   listenPort=6633, autoSetMacs=True)
 
     info('** Starting the network\n')
