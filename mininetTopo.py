@@ -11,7 +11,7 @@ from mininet.log import setLogLevel, info
 from mininet.cli import CLI
 from mininet.topo import Topo
 from mininet.topolib import TreeTopo
-from mininet.link import Link
+from mininet.link import Link, TCLink
 from mininet.node import RemoteController
 
 net = None
