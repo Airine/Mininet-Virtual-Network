@@ -26,10 +26,8 @@ class MyTopo(Topo):
         f.close()
 
         N, M, L = [int(i) for i in config]
-        # devices = dict()
 
         for n in range(N):
-            # devices['h%d' % (n+1)]=
             self.addHost('h%d' % (n+1))
         for m in range(M):
             sconfig = {'dpid': "%016x" % (m+1)}
@@ -37,8 +35,6 @@ class MyTopo(Topo):
 
         for l in lines:
             d1, d2, bandwidth = l.strip().split(',')
-            # lconfig = dict(bw=bandwidth, max_queue_size=1000)
-            # self.addLink(devices[d1], devices[d2])
             self.addLink(d1, d2)
 
     # You can write other functions as you need.
