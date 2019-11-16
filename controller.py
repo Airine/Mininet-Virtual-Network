@@ -17,8 +17,13 @@ from pox.lib.revent import *
 from pox.lib.util import dpid_to_str
 from pox.lib.addresses import IPAddr, EthAddr
 from pox.lib.addresses import IPAddr, EthAddr
+from pox.lib.recoco import Timer
+
+import time
 
 log = core.getLogger()
+
+FLOW_TIMEOUT = 30
 
 def dpid_to_mac (dpid):
   return EthAddr("%012x" % (dpid & 0xffFFffFFffFF))
@@ -28,7 +33,7 @@ class Entry(object):
     Not strictly an entry in flow table.
     """
     def __init__(self, port, mac):
-        # self.timeout = time.time() + FLOW_TIMEOUT
+        self.timeout = time.time() + FLOW_TIMEOUT
         self.port = port
         self.mac = mac
 
@@ -42,6 +47,9 @@ class Entry(object):
     
     def __str__ (self):
         return "%s\t %s" % (self.mac, self.port)
+    
+    def is_expired(self):
+        return time.time() > self.timeout;
 
 class Controller(EventMixin):
     def __init__(self):
@@ -50,24 +58,28 @@ class Controller(EventMixin):
 
         # dpid -> {mac->entry}
         self.flow_table = dict()
+        # handles entry expiring
+        self._expire_timer = Timer(5, self._handle_expiration, recurring=True)
+        # core.listen_to_dependencies(self)
         
     # You can write other functions as you need.
+
+    def _handle_expiration (self):
+        for k,v in self.flow_table.iteritems():
+            dpid = k
+            remove_list = list()
+            for mac, entry in v.iteritems():
+                expires_time = entry.timeout
+                if entry.is_expired():
+                    log.info("%s's flow entry %s expired" % (dpid, mac))
+                    remove_list.append(mac)
+            for mac in remove_list:
+                del self.flow_table[dpid][mac]
+            log.info("%s's flow table" % dpid)
+            for entry in self.flow_table[dpid].itervalues():
+                log.info(entry)
         
     def _handle_PacketIn (self, event):
-        # install entries to the route table
-        def install_enqueue(event, packet, outport, q_id):
-            pass
-
-        # Check the packet and decide how to route the packet
-        def forward(outport, message = None):
-
-            pass
-
-        # When it knows nothing about the destination, flood but don't install the rule
-        def flood (message = None):
-            message.data = event.ofp
-            message.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
-            event.connection.send(msg)
 
         dpid = event.connection.dpid
         inport = event.port
@@ -76,10 +88,21 @@ class Controller(EventMixin):
             log.warning("%i %i ignoring unparsed packet", dpid, inport)
             return
 
-        # log.info('dpid\tinport\tpacket')        
-        # log.info('%s\t\t%s\t%s\t' %(dpid,inport,packet))
-        # log.info('src\tdst')
-        # log.info('%s\t%s'%(packet.src, packet.dst))
+        # install entries to the route table
+        def install_enqueue(event, packet, outport, q_id):
+            pass
+
+        # Check the packet and decide how to route the packet
+        def forward(outport, message = None):
+            message.data = event.ofp
+            message.actions.append(of.ofp_action_output(port = outport))
+            event.connection.send(msg)
+
+        # When it knows nothing about the destination, flood but don't install the rule
+        def flood (message = None):
+            message.data = event.ofp
+            message.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+            event.connection.send(msg)
 
         msg = of.ofp_packet_out()
 
@@ -94,9 +117,11 @@ class Controller(EventMixin):
             log.info("adding entry %s in %s's flow table" % (t_entry, dpid))    
         
         if packet.dst in self.flow_table[dpid]:
-            log.info("%s -> %s by flow table" % (dpid, packet.dst))
+            # log.info("found %s -> %s in flow table" % (dpid, packet.dst))
+            # if not self.flow_table[dpid][packet.dst].is_expired:
             outport = self.flow_table[dpid][packet.dst].port
             forward(outport, msg)
+            # return
         else:
             flood(msg)
 
