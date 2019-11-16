@@ -19,6 +19,11 @@ from pox.lib.addresses import IPAddr, EthAddr
 
 log = core.getLogger()
 
+class Entry(object):
+    """
+
+    """
+
 class Controller(EventMixin):
     def __init__(self):
         self.listenTo(core.openflow)
@@ -27,6 +32,17 @@ class Controller(EventMixin):
     # You can write other functions as you need.
         
     def _handle_PacketIn (self, event):
+        dpid = event.connection.dpid
+        inport = event.port
+        packet = event.parsed
+        if not packet.parsed:
+            log.warning("%i %i ignoring unparsed packet", dpid, inport)
+            return
+
+        log.info('dpid\tinport\tpacket')
+        log.info('%s\t\t\t%s\t%s\t'%(dpid,inport,packet))
+        # log.info(inport)
+        # log.info(packet)
         
         # install entries to the route table
         def install_enqueue(event, packet, outport, q_id):
@@ -38,10 +54,15 @@ class Controller(EventMixin):
 
         # When it knows nothing about the destination, flood but don't install the rule
         def flood (message = None):
-
-            pass
+            message.data = event.ofp
+            message.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+            return message
+            # event.connection.send(msg)
         
-        forward()
+        # forward()
+        msg = of.ofp_packet_out()
+        msg = flood(msg)
+        event.connection.send(msg)
 
 
     def _handle_ConnectionUp(self, event):
