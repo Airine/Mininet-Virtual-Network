@@ -98,7 +98,8 @@ class Controller(EventMixin):
                         self.policys.append([l1, l2])
         # for k,v in self.lan.iteritems():
         #     log.info("%s -> %s",k,v)
-        log.info("%s", self.policys)
+        if DEBUG:
+            log.info("%s", self.policys)
         
     # You can write other functions as you need.
     def _handle_expiration (self):
@@ -128,35 +129,14 @@ class Controller(EventMixin):
         dpid = event.connection.dpid
         inport = event.port
         packet = event.parsed
-        log.info(packet.type)
         p = packet.next
         if isinstance(p, ipv4) and DEBUG:
-            # if packet.src not in self.ip2mac:
-            #     self.ip2mac[p.srcip] = packet.src
-            # if packet.dst not in self.ip2mac:
-            #     self.ip2mac[p.dstip] = packet.dst
             log.info("%s->%s, %s",p.srcip,p.dstip,p.protocol)
             log.info("%s->%s",packet.src,packet.dst)
-            # ICMP_PROTOCOL = 1
-            # TCP_PROTOCOL  = 6
-            # UDP_PROTOCOL  = 17
-            # IGMP_PROTOCOL = 2
 
         if not packet.parsed:
             log.warning("%i %i ignoring unparsed packet", dpid, inport)
             return
-        
-        # ip = packet.find('ipv4')
-        # if ip is not None:
-        #     log.info("srcip: %s" % ip)
-        # tcp = packet.find("tcp")
-        # if tcp is not None:
-        #     log.info("TCP pkt!")
-        # if packet.type == pkt.IP_TYPE:
-        #     ip_pkt = packet.payload
-        #     log.info("This is a IP packet.")
-        #     if ip_pkt.protocol == pkt.TCP_PROTOCOL:
-        #         log.info("This is a TCP packet.")
 
         # install entries to the route table
         def install_enqueue(event, packet, outport, q_id):
