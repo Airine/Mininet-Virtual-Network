@@ -35,7 +35,7 @@ class MyTopo(Topo):
 
         for l in lines:
             d1, d2, bandwidth = l.strip().split(',')
-            self.addLink(d1, d2, bw=bandwidth)
+            self.addLink(d1, d2)
 
 def startNetwork():
     info('** Creating the tree network\n')

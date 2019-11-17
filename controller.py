@@ -26,7 +26,7 @@ import time
 log = core.getLogger()
 
 FLOW_TIMEOUT = 30
-DEBUG = True
+DEBUG = False
 
 ICMP_PROTOCOL = 1
 TCP_PROTOCOL  = 6
@@ -70,8 +70,6 @@ class Controller(EventMixin):
         self.flow_table = dict()
         # handles entry expiring
         self._expire_timer = Timer(5, self._handle_expiration, recurring=True)
-        # ip -> mac
-        # self.ip2mac = dict()
         # load firewall policy
         self.lan = list()
         # lan to policy
