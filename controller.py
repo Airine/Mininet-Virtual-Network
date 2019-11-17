@@ -24,6 +24,10 @@ import time
 log = core.getLogger()
 
 FLOW_TIMEOUT = 30
+DEBUG = True
+
+rules = [['00:00:00:00:00:01','00:00:00:00:00:02'],['00:00:00:00:00:02', '00:00:00:00:00:04'],['00:00:00:00:00:07','00:00:00:00:00:02']]
+
 
 def dpid_to_mac (dpid):
   return EthAddr("%012x" % (dpid & 0xffFFffFFffFF))
@@ -88,6 +92,11 @@ class Controller(EventMixin):
         dpid = event.connection.dpid
         inport = event.port
         packet = event.parsed
+
+        p = packet.next
+        if isinstance(p, ipv4) and DEBUG:
+            log.info("%s->%s, %s",p.srcip,p.dstip,p.protocol)
+
         if not packet.parsed:
             log.warning("%i %i ignoring unparsed packet", dpid, inport)
             return
@@ -125,26 +134,21 @@ class Controller(EventMixin):
 
         # update flow_table
         if dpid not in self.flow_table:
-            log.info("building flow table for switch %s", dpid)
+            if DEBUG:
+                log.info("building flow table for switch %s", dpid)
             self.flow_table[dpid] = dict()
         
         if packet.src not in self.flow_table[dpid]:
             t_entry = Entry(inport, packet.src)
             self.flow_table[dpid][packet.src] = t_entry
-            log.info("adding entry %s in %s's flow table" % (t_entry, dpid))    
+            if DEBUG:
+                log.info("adding entry %s in %s's flow table" % (t_entry, dpid))    
         
         if packet.dst in self.flow_table[dpid]:
-            # log.info("found %s -> %s in flow table" % (dpid, packet.dst))
-            # if not self.flow_table[dpid][packet.dst].is_expired:
             outport = self.flow_table[dpid][packet.dst].port
             forward(outport, msg)
-            # return
         else:
             flood(msg)
-
-        # log.info("%s's flow table" % dpid)
-        # for entry in self.flow_table[dpid].itervalues():
-        #     log.info(entry)
 
     def _handle_ConnectionUp(self, event):
         dpid = dpid_to_str(event.dpid)
@@ -154,8 +158,15 @@ class Controller(EventMixin):
         def sendFirewallPolicy(connection, policy):
 
             pass
-
-        # for i in [FIREWALL POLICIES]: I I /
+        
+        for rule in rules:
+            block = of.ofp_match()
+            block.dl_src = EthAddr(rule[0])
+            block.dl_dst = EthAddr(rule[1])
+            flow_mod = of.ofp_flow_mod()
+            flow_mod.match = block
+            event.connection.send(flow_mod)
+        # for i in [FIREWALL POLICIES]:
         #     sendFirewallPolicy(event.connection, i)
             
 
