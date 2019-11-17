@@ -14,6 +14,8 @@ import pox.openflow.discovery
 import pox.openflow.spanning_tree
 import pox.lib.packet as pkt
 
+from pox.lib.packet.ipv4 import ipv4
+from pox.lib.packet.tcp import tcp
 from pox.lib.revent import *
 from pox.lib.util import dpid_to_str
 from pox.lib.addresses import IPAddr, EthAddr
@@ -24,9 +26,13 @@ import time
 log = core.getLogger()
 
 FLOW_TIMEOUT = 30
-DEBUG = True
+DEBUG = False
 
-rules = [['00:00:00:00:00:01','00:00:00:00:00:02'],['00:00:00:00:00:02', '00:00:00:00:00:04'],['00:00:00:00:00:07','00:00:00:00:00:02']]
+ICMP_PROTOCOL = 1
+TCP_PROTOCOL  = 6
+
+
+# rules = [['10.0.0.1','10.0.0.2']]
 
 
 def dpid_to_mac (dpid):
@@ -64,10 +70,37 @@ class Controller(EventMixin):
         self.flow_table = dict()
         # handles entry expiring
         self._expire_timer = Timer(5, self._handle_expiration, recurring=True)
+        # ip -> mac
+        # self.ip2mac = dict()
+        # load firewall policy
+        self.lan = list()
+        # lan to policy
+        self.policys = list()
+        self._load_fw_policy('pox/mvn/lan_policy.in')
         # core.listen_to_dependencies(self)
+    
+    def ip2mac(self, ip):
+        return dpid_to_mac(int(ip.split('.')[-1]))
+
+    def _load_fw_policy(self, policy_file):
+        f = open(policy_file)
+        n_of_lan = int(f.readline().strip())
+        lans = [int(i) for i in f.readline().strip().split(' ')]
+        for i in range(len(lans)):
+            t_lan = list()
+            for j in range(lans[i]):
+                t_lan.append(f.readline().strip())
+            self.lan.append(t_lan)
+        for i in range(len(self.lan)):
+            for j in range(i+1,len(self.lan)):
+                for l1 in self.lan[i]:
+                    for l2 in self.lan[j]:
+                        self.policys.append([l1, l2])
+        # for k,v in self.lan.iteritems():
+        #     log.info("%s -> %s",k,v)
+        log.info("%s", self.policys)
         
     # You can write other functions as you need.
-
     def _handle_expiration (self):
         for k,v in self.flow_table.iteritems():
             dpid = k
@@ -75,27 +108,39 @@ class Controller(EventMixin):
             for mac, entry in v.iteritems():
                 expires_time = entry.timeout
                 if entry.is_expired():
-                    log.info("%s's flow entry %s expired" % (dpid, mac))
+                    if DEBUG:
+                        log.info("%s's flow entry %s expired" % (dpid, mac))
                     remove_list.append(mac)
             if len(remove_list) > 0:
-                log.info("%s's flow table before" % dpid)
-                for entry in self.flow_table[dpid].itervalues():
-                    log.info(entry)
+                if DEBUG:
+                    log.info("%s's flow table before" % dpid)
+                    for entry in self.flow_table[dpid].itervalues():
+                        log.info(entry)
                 for mac in remove_list:
                     del self.flow_table[dpid][mac]
-                log.info("%s's flow table after" % dpid)
-                for entry in self.flow_table[dpid].itervalues():
-                    log.info(entry)
+                if DEBUG:
+                    log.info("%s's flow table after" % dpid)
+                    for entry in self.flow_table[dpid].itervalues():
+                        log.info(entry)
         
     def _handle_PacketIn (self, event):
 
         dpid = event.connection.dpid
         inport = event.port
         packet = event.parsed
-
+        log.info(packet.type)
         p = packet.next
         if isinstance(p, ipv4) and DEBUG:
+            # if packet.src not in self.ip2mac:
+            #     self.ip2mac[p.srcip] = packet.src
+            # if packet.dst not in self.ip2mac:
+            #     self.ip2mac[p.dstip] = packet.dst
             log.info("%s->%s, %s",p.srcip,p.dstip,p.protocol)
+            log.info("%s->%s",packet.src,packet.dst)
+            # ICMP_PROTOCOL = 1
+            # TCP_PROTOCOL  = 6
+            # UDP_PROTOCOL  = 17
+            # IGMP_PROTOCOL = 2
 
         if not packet.parsed:
             log.warning("%i %i ignoring unparsed packet", dpid, inport)
@@ -156,19 +201,17 @@ class Controller(EventMixin):
         
         # Send the firewall policies to the switch
         def sendFirewallPolicy(connection, policy):
-
-            pass
-        
-        for rule in rules:
             block = of.ofp_match()
-            block.dl_src = EthAddr(rule[0])
-            block.dl_dst = EthAddr(rule[1])
+            block.dl_src = EthAddr(self.ip2mac(policy[0]))
+            block.dl_dst = EthAddr(self.ip2mac(policy[1]))
+            block.dl_type = 0x0800 # IP
+            block.nw_proto = TCP_PROTOCOL
+            # block.in_port = 4001 # TODO
             flow_mod = of.ofp_flow_mod()
             flow_mod.match = block
-            event.connection.send(flow_mod)
-        # for i in [FIREWALL POLICIES]:
-        #     sendFirewallPolicy(event.connection, i)
-            
+            connection.send(flow_mod)
+        for p in self.policys:
+            sendFirewallPolicy(event.connection, p)
 
 def launch():
     # Run discovery and spanning tree modules
