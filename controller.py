@@ -26,7 +26,7 @@ import time
 log = core.getLogger()
 
 FLOW_TIMEOUT = 30
-DEBUG = False
+DEBUG = True
 
 ICMP_PROTOCOL = 1
 TCP_PROTOCOL  = 6
@@ -77,7 +77,7 @@ class Controller(EventMixin):
         # lan to policy
         self.policys = list()
         self.premium = list()
-        self._load_fw_policy('pox/mvn/lan_policy.in')
+        self._load_fw_policy('pox/mvn/policy.in')
         # core.listen_to_dependencies(self)
     
     def ip2mac(self, ip):
@@ -86,9 +86,11 @@ class Controller(EventMixin):
     def _load_fw_policy(self, policy_file):
         f = open(policy_file)
         config = f.readline().strip().split(' ')
-        N, M = config[0], config[1]
+        N, M = int(config[0]), int(config[1])
         lans = [int(i) for i in f.readline().strip().split(' ')]
-        assert N == len(lans): "invalid input"
+        
+        if N is len(lans): 
+            log.info("valid input policy")
         for i in range(len(lans)):
             t_lan = list()
             for j in range(lans[i]):
@@ -171,6 +173,7 @@ class Controller(EventMixin):
                 log.info("%s->%s, %s",p.srcip,p.dstip,p.protocol)
                 log.info("%s->%s",packet.src,packet.dst)
             is_premium = p.srcip in self.premium or p.dstip in self.premium
+        is_premium = False
 
         # update flow_table
         if dpid not in self.flow_table:
@@ -201,7 +204,7 @@ class Controller(EventMixin):
             block.dl_dst = EthAddr(self.ip2mac(policy[1]))
             block.dl_type = 0x0800 # IP
             block.nw_proto = TCP_PROTOCOL
-            block.tp_src = 4001 # block packet from 4001 port
+            # block.tp_src = 4001 # block packet from 4001 port
             flow_mod = of.ofp_flow_mod()
             flow_mod.match = block
             connection.send(flow_mod)
