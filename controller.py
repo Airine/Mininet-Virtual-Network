@@ -76,6 +76,7 @@ class Controller(EventMixin):
         self.lan = list()
         # lan to policy
         self.policys = list()
+        self.premium = list()
         self._load_fw_policy('pox/mvn/lan_policy.in')
         # core.listen_to_dependencies(self)
     
@@ -84,8 +85,10 @@ class Controller(EventMixin):
 
     def _load_fw_policy(self, policy_file):
         f = open(policy_file)
-        n_of_lan = int(f.readline().strip())
+        config = f.readline().strip().split(' ')
+        N, M = config[0], config[1]
         lans = [int(i) for i in f.readline().strip().split(' ')]
+        assert N == len(lans): "invalid input"
         for i in range(len(lans)):
             t_lan = list()
             for j in range(lans[i]):
@@ -96,10 +99,13 @@ class Controller(EventMixin):
                 for l1 in self.lan[i]:
                     for l2 in self.lan[j]:
                         self.policys.append([l1, l2])
+        for i in range(M):
+            self.premium.append(IPAddr(f.readline().strip()))
         # for k,v in self.lan.iteritems():
         #     log.info("%s -> %s",k,v)
         if DEBUG:
-            log.info("%s", self.policys)
+            log.info("policys: %s", self.policys)
+            log.info("premium: %s", self.premium)
         
     # You can write other functions as you need.
     def _handle_expiration (self):
@@ -130,9 +136,6 @@ class Controller(EventMixin):
         inport = event.port
         packet = event.parsed
         p = packet.next
-        if isinstance(p, ipv4) and DEBUG:
-            log.info("%s->%s, %s",p.srcip,p.dstip,p.protocol)
-            log.info("%s->%s",packet.src,packet.dst)
 
         if not packet.parsed:
             log.warning("%i %i ignoring unparsed packet", dpid, inport)
@@ -143,19 +146,31 @@ class Controller(EventMixin):
             pass
 
         # Check the packet and decide how to route the packet
-        def forward(outport, message = None):
+        def forward(outport, message = None, is_premium=False):
             message.data = event.ofp
-            message.actions.append(of.ofp_action_output(port = outport))
+            if is_premium:
+                message.actions.append(of.ofp_action_enqueue(port = outport, queue_id=1))
+            else:
+                message.actions.append(of.ofp_action_output(port = outport))
             event.connection.send(msg)
 
         # When it knows nothing about the destination, flood but don't install the rule
-        def flood (message = None):
+        def flood (message = None, is_premium=False):
             message.data = event.ofp
-            message.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+            if is_premium:
+                message.actions.append(of.ofp_action_enqueue(port = of.OFPP_FLOOD, queue_id=1))
+            else:
+                message.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
             # TODO: use OFPP_ALL and checksum to avoid 
             event.connection.send(msg)
 
         msg = of.ofp_packet_out()
+        is_premium = False
+        if isinstance(p, ipv4):
+            if DEBUG:
+                log.info("%s->%s, %s",p.srcip,p.dstip,p.protocol)
+                log.info("%s->%s",packet.src,packet.dst)
+            is_premium = p.srcip in self.premium or p.dstip in self.premium
 
         # update flow_table
         if dpid not in self.flow_table:
@@ -171,9 +186,9 @@ class Controller(EventMixin):
         
         if packet.dst in self.flow_table[dpid]:
             outport = self.flow_table[dpid][packet.dst].port
-            forward(outport, msg)
+            forward(outport, msg, is_premium)
         else:
-            flood(msg)
+            flood(msg, is_premium)
 
     def _handle_ConnectionUp(self, event):
         dpid = dpid_to_str(event.dpid)
@@ -186,7 +201,7 @@ class Controller(EventMixin):
             block.dl_dst = EthAddr(self.ip2mac(policy[1]))
             block.dl_type = 0x0800 # IP
             block.nw_proto = TCP_PROTOCOL
-            # block.in_port = 4001 # TODO
+            block.tp_src = 4001 # block packet from 4001 port
             flow_mod = of.ofp_flow_mod()
             flow_mod.match = block
             connection.send(flow_mod)

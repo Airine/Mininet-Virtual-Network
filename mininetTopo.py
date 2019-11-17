@@ -44,18 +44,18 @@ def startNetwork():
     topo = MyTopo()
     global net
     net = Mininet(topo=topo, link = Link,
-                  controller=lambda name: RemoteController(name, ip='172.27.226.243'), #192.168.56.1
+                  controller=lambda name: RemoteController(name, ip='192.168.56.1'), #192.168.56.1
                   listenPort=6633, autoSetMacs=True)
 
     info('** Starting the network\n')
     net.start()
 
     # Create QoS Queues
-    # os.system('sudo ovs-vsctl -- set Port [INTERFACE] qos=@newqos \
-    #            -- --id=@newqos create QoS type=linux-htb other-config:max-rate=[LINK SPEED] queues=0=@q0,1=@q1,2=@q2 \
-    #            -- --id=@q0 create queue other-config:max-rate=[LINK SPEED] other-config:min-rate=[LINK SPEED] \
-    #            -- --id=@q1 create queue other-config:min-rate=[X] \
-    #            -- --id=@q2 create queue other-config:max-rate=[Y]')
+    os.system('sudo ovs-vsctl -- set Port eth0 qos=@newqos \
+               -- --id=@newqos create QoS type=linux-htb other-config:max-rate=10000000 queues=0=@q0,1=@q1 \
+               -- --id=@q0 create queue other-config:max-rate=5000000 \
+               -- --id=@q1 create queue other-config:min-rate=8000000 ')
+            #    -- --id=@q2 create queue other-config:max-rate=5000000')
 
     info('** Running CLI\n')
     CLI(net)
