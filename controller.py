@@ -12,10 +12,10 @@ from pox.core import core
 import pox.openflow.libopenflow_01 as of
 import pox.openflow.discovery
 import pox.openflow.spanning_tree
+import pox.lib.packet as pkt
 
 from pox.lib.revent import *
 from pox.lib.util import dpid_to_str
-from pox.lib.addresses import IPAddr, EthAddr
 from pox.lib.addresses import IPAddr, EthAddr
 from pox.lib.recoco import Timer
 
@@ -73,11 +73,15 @@ class Controller(EventMixin):
                 if entry.is_expired():
                     log.info("%s's flow entry %s expired" % (dpid, mac))
                     remove_list.append(mac)
-            for mac in remove_list:
-                del self.flow_table[dpid][mac]
-            log.info("%s's flow table" % dpid)
-            for entry in self.flow_table[dpid].itervalues():
-                log.info(entry)
+            if len(remove_list) > 0:
+                log.info("%s's flow table before" % dpid)
+                for entry in self.flow_table[dpid].itervalues():
+                    log.info(entry)
+                for mac in remove_list:
+                    del self.flow_table[dpid][mac]
+                log.info("%s's flow table after" % dpid)
+                for entry in self.flow_table[dpid].itervalues():
+                    log.info(entry)
         
     def _handle_PacketIn (self, event):
 
@@ -87,6 +91,18 @@ class Controller(EventMixin):
         if not packet.parsed:
             log.warning("%i %i ignoring unparsed packet", dpid, inport)
             return
+        
+        # ip = packet.find('ipv4')
+        # if ip is not None:
+        #     log.info("srcip: %s" % ip)
+        # tcp = packet.find("tcp")
+        # if tcp is not None:
+        #     log.info("TCP pkt!")
+        # if packet.type == pkt.IP_TYPE:
+        #     ip_pkt = packet.payload
+        #     log.info("This is a IP packet.")
+        #     if ip_pkt.protocol == pkt.TCP_PROTOCOL:
+        #         log.info("This is a TCP packet.")
 
         # install entries to the route table
         def install_enqueue(event, packet, outport, q_id):
@@ -102,6 +118,7 @@ class Controller(EventMixin):
         def flood (message = None):
             message.data = event.ofp
             message.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+            # TODO: use OFPP_ALL and checksum to avoid 
             event.connection.send(msg)
 
         msg = of.ofp_packet_out()
@@ -135,6 +152,7 @@ class Controller(EventMixin):
         
         # Send the firewall policies to the switch
         def sendFirewallPolicy(connection, policy):
+
             pass
 
         # for i in [FIREWALL POLICIES]: I I /
